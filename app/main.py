@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from app.core.config import settings, fastapi_config
+from app.modules.users.router import router as user_router
 
 logger = logging.getLogger(__name__)
 
@@ -27,4 +28,6 @@ app.add_middleware(
     allow_methods=("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"),
     allow_headers=settings.CORS_HEADERS,
 )
+
+app.include_router(user_router, prefix="/user", tags=["User"])
 
