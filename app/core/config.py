@@ -23,7 +23,12 @@ class Environment(str, Enum):
 class Config(BaseSettings):
     ENVIRONMENT: Environment = Environment.DEV
 
+    APP_NAME: str = "app"
+    APP_MODULES: list[str]
+
     DATABASE_URL: PostgresDsn
+    DATABASE_ECHO: bool | None = False
+    
     REDIS_URL: RedisDsn
 
     SITE_DOMAIN: str = "myapp.com"

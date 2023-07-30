@@ -3,7 +3,7 @@ from typing import AsyncGenerator
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
-from app.config import settings, fastapi_config
+from app.core.config import settings, fastapi_config
 
 logger = logging.getLogger(__name__)
 

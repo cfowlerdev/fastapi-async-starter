@@ -24,3 +24,20 @@ Not currently using Poetry in the Dockerfile, so in the meantime relying on requ
 ```sh
 $ poetry export -f requirements.txt --output requirements.txt --without-hashes
 ```
+
+### Migrations
+
+- Create new auto migrations
+```shell
+docker compose exec app makemigrations
+```
+
+- Run migrations
+```shell
+docker compose exec app migrate
+```
+
+- Downgrade migrations
+```shell
+docker compose exec app downgrade -1  # or -2 or base or hash of the migration
+```
