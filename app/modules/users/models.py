@@ -1,9 +1,8 @@
-from sqlalchemy import Column, String, BigInteger, SmallInteger
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String
 
-from app.core.database import mixins
+from app.core.database import mixins, base
 
-class User(mixins.BaseModel, mixins.CRUDMixin):
+class User(base.BaseModel, mixins.WithTimestamps, mixins.WithAsyncCrud):
     __tablename__ = "users"
 
     displayname = Column(String(255), nullable=True)

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 from app.core.config import settings
-from app.core.database.mixins import DeclarativeBase
+from app.core.database.base import DeclarativeBase
 
 # Load all models in project
 def get_project_models_metadata():

@@ -1,43 +1,14 @@
-import datetime
-from sqlalchemy import (
-    Column,
-    Integer,
-    DateTime,
-    inspect,
-    Boolean,
-    select,
-    delete,
-)
-from sqlalchemy.engine import ScalarResult
+from datetime import datetime
+from sqlalchemy import select, delete, func
+from sqlalchemy.orm import Mapped, mapped_column, selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, declared_attr, selectinload, declarative_base
 
-DeclarativeBase = declarative_base()
+class WithTimestamps(object):
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now())
+    updated_at: Mapped[datetime] = mapped_column(default=datetime.now(), onupdate=datetime.now())
 
-class BaseModel(DeclarativeBase):
-    __abstract__ = True
-
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-    
-    @declared_attr
-    def __tablename__(cls):
-        return cls.__name__.lower()
-        
-    id = Column(Integer, primary_key=True)
-    created_at = Column(DateTime(timezone=False), nullable=False, default=datetime.datetime.now)
-    updated_at = Column(DateTime(timezone=False), nullable=False, default=datetime.datetime.now, onupdate=datetime.datetime.now)
-
-    def __repr__(self):
-        return "<{0.__class__.__name__}(id={0.id!r})>".format(self)
-    
-    def as_dict(self) -> dict:
-        return {c.key: getattr(self, c.key) for c in inspect(self).mapper.column_attrs}
-    
-class CRUDMixin(object):
-
-    __table_args__ = {"extend_existing": True}
+class WithAsyncCrud(object):
+    __table__args__ = {"extend_existing": True}
 
     async def commit(self, db: AsyncSession):
         try:
@@ -45,128 +16,9 @@ class CRUDMixin(object):
         except Exception as exc:
             await db.rollback()
             raise exc
-
+    
     @classmethod
-    async def _async_filter(
-        cls,
-        db: AsyncSession,
-        where,
-        select_in_load,
-        order_by,
-        limit,
-        for_update,
-    ) -> ScalarResult:
-        """
-        Creating a select request with filter and restrictions
-
-        :param db: Database session
-        :param where: An expression for where
-        :param select_in_load: Load related objects by key (eager loade)
-        :param order_by: Grouping by field
-        :param limit: Limiting the number of records
-        """
-        expression = select(cls, for_update)
-        if where is not None:
-            expression = expression.where(where)
-        if select_in_load is not None:
-            expression = expression.options(selectinload(select_in_load))
-        if order_by is not None:
-            expression = expression.order_by(order_by)
-        if limit is not None:
-            expression = expression.limit(limit)
-        result = await db.execute(expression)
-        return result.scalars()
-
-    @classmethod
-    async def async_delete(
-        cls,
-        db: AsyncSession,
-        where,
-    ) -> bool:
-        """
-        Removing objects
-
-        :param db: Database session
-        :param where: An expression for where
-        """
-        expression = delete(cls)
-        if where is not None:
-            expression = expression.where(where)
-
-        result = await db.execute(expression)
-        try:
-            await db.commit()
-        except Exception as exc:
-            await db.rollback()
-            raise exc
-        else:
-            await db.flush()
-        return result.rowcount > 0
-
-    @classmethod
-    async def async_filter(
-        cls,
-        db: AsyncSession,
-        where=None,
-        select_in_load=None,
-        order_by=None,
-        limit=None,
-        for_update=False,
-    ):
-        scalars = await cls._async_filter(
-            db,
-            where,
-            select_in_load,
-            order_by=order_by,
-            limit=limit,
-            for_update=for_update,
-        )
-        result = scalars.all()
-        await db.flush()
-        return result
-
-    @classmethod
-    async def async_first(
-        cls,
-        db: AsyncSession,
-        where=None,
-        select_in_load=None,
-        order_by=None,
-        for_update=False,
-    ) -> "CRUDMixin":
-        scalars = await cls._async_filter(
-            db,
-            where,
-            select_in_load,
-            order_by=order_by,
-            limit=1,
-            for_update=for_update,
-        )
-        result = scalars.first()
-        await db.flush()
-        return result
-
-    @classmethod
-    async def async_all(cls, db: AsyncSession):
-        """
-        Async get all objects
-
-        :return: list[EntityModelClass]
-        """
-        result = await db.execute(select(cls))
-        res = result.scalars().all()
-        await db.flush()
-        return res
-
-    @classmethod
-    async def async_add(
-        cls,
-        db: AsyncSession,
-        instance: "CRUDMixin",
-    ) -> "CRUDMixin":
-        """
-        Async Create/Update by instance
-        """
+    async def create(cls, db: AsyncSession, instance: "WithAsyncCrud") -> "WithAsyncCrud":
         db.add(instance)
         try:
             await db.commit()
@@ -179,51 +31,68 @@ class CRUDMixin(object):
             except Exception:
                 return instance
             return instance
+        
 
     @classmethod
-    async def async_add_by_kwargs(cls, db: AsyncSession, **kwargs):
-        """
-        Async Create/Update by kwargs
-        """
-        instance = cls(**kwargs)
-        return await cls.async_add(db, instance)
-
-    @classmethod
-    async def async_add_by_schema(cls, db: AsyncSession, instance_schema):
-        """
-        Async create/update by instance_schema
-
-        :param db: Db db
-        :param instance_schema: Pydantic schema
-        """
+    async def create_from_schema(cls, db: AsyncSession, instance_schema):
         instance = cls(**instance_schema.dict())
-        return await cls.async_add(db, instance)
+        return await cls.create(db, instance)
+    
+    @classmethod
+    async def create_from_kwargs(cls, db: AsyncSession, **kwargs):
+        instance = cls(**kwargs)
+        return await cls.add(db, instance)
+    
+    @classmethod
+    async def filter(cls, db: AsyncSession, where=None, select_in_load=None, order_by=None, limit=None, offset=None, for_update=False, count=False):
+        stmt = select(cls, for_update)
+        
+        if where is not None:
+            stmt = stmt.where(where)
+        if select_in_load is not None:
+            stmt = stmt.options(selectinload(select_in_load))
+        if order_by is not None:
+            stmt = stmt.order_by(order_by)
+        if limit is not None:
+            stmt = stmt.limit(limit)
+        if offset is not None:
+            stmt = stmt.offset(offset)
+
+        # Execute the main query and fetch the results
+        result = await db.execute(stmt)
+        rows = result.scalars().all()
+        await db.flush()
+
+        # Create a separate count query to get the total count
+        total_count = None        
+        if count:
+            count_stmt = select(func.count()).select_from(cls)
+            if where is not None:
+                count_stmt = count_stmt.where(where)
+            count_result = await db.execute(count_stmt)
+            total_count = count_result.scalar()
+            
+        return rows, total_count
 
     @classmethod
-    def all(cls, db: Session):
-        return db.query(cls).filter().all()
+    async def update(cls, db: AsyncSession, commit=True, **kwargs):
+        for key, value in kwargs.items():
+            setattr(cls, key, value)
+        if commit:
+            await db.commit()
 
     @classmethod
-    def sync_add(cls, db: Session, instance):
-        db.add(instance)
+    async def delete(cls, db: AsyncSession, where) -> bool:
+        expression = delete(cls)
+        if where is not None:
+            expression = expression.where(where)
+        result = await db.execute(expression)
         try:
-            db.commit()
+            await db.commit()
         except Exception as exc:
-            db.rollback()
+            await db.rollback()
             raise exc
         else:
-            return instance
-
-    @classmethod
-    def sync_add_by_schema(cls, db: Session, instance_schema):
-        instance = cls(**instance_schema.dict())
-        return cls.sync_add(db, instance)
-
-    @classmethod
-    def first(cls, db: Session, **kwargs):
-        return db.query(cls).filter_by(**kwargs).first()
-
-    @classmethod
-    def filter_by(cls, db: Session, **kwargs):
-        return db.query(cls).filter_by(**kwargs).all()
-    
+            await db.flush()
+        return result.rowcount > 0
+        

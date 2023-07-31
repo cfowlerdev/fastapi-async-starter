@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from app.core.schemas import BaseModel
 
 class UserResponse(BaseModel):
     id: int
@@ -7,9 +7,6 @@ class UserResponse(BaseModel):
     updated_at: datetime
 
     displayname: str
-
-    class Config:
-        orm_mode = True
 
 class UserInput(BaseModel):
     displayname: str
