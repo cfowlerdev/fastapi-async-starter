@@ -34,14 +34,28 @@ async def create_user(
         return user
 
 @router.get(
+    "/{user_id}",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK,
+    description="Get a user by ID",
+    tags=["User"],
+    summary="Get a user by ID"    
+)
+async def get_user(user_id: int, db: AsyncSession = Depends(async_dbsession)):
+    user = await User.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return UserResponse.model_validate(user)
+    
+@router.get(
     "/",
-    # response_model=PagedResponse[UserResponse],
+    response_model=PagedResponse[UserResponse],
     status_code=status.HTTP_200_OK,
     description="Get list of users based on filter",
     tags=["User"],
     summary="Get list of users"    
 )
-async def get_users(request: Request, page_params: PageParams = Depends(), db: AsyncSession = Depends(async_dbsession)):
+async def get_users(page_params: PageParams = Depends(), db: AsyncSession = Depends(async_dbsession)):
     rows, total_count = await User.filter(db=db, offset=(page_params.page - 1) * page_params.size, count=True)
     return PagedResponse(
         total = total_count,
@@ -49,4 +63,5 @@ async def get_users(request: Request, page_params: PageParams = Depends(), db: A
         size = page_params.size,
         results = [UserResponse.model_validate(item) for item in rows]
     )
+
 

@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import select, delete, func
-from sqlalchemy.orm import Mapped, mapped_column, selectinload
+from sqlalchemy.orm import Mapped, mapped_column, selectinload, exc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 class WithTimestamps(object):
@@ -43,6 +43,14 @@ class WithAsyncCrud(object):
         instance = cls(**kwargs)
         return await cls.add(db, instance)
     
+    @classmethod
+    async def get_by_id(cls, db: AsyncSession, id):
+        try:
+            result = await db.get(cls, id)
+            return result
+        except exc.NoResultFound:
+            return None
+        
     @classmethod
     async def filter(cls, db: AsyncSession, where=None, select_in_load=None, order_by=None, limit=None, offset=None, for_update=False, count=False):
         stmt = select(cls, for_update)
