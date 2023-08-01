@@ -53,7 +53,7 @@ class WithAsyncCrud(object):
             return result
         except exc.NoResultFound:
             return None
-        
+
     @classmethod
     async def filter(cls, db: AsyncSession, where=None, select_in_load=None, order_by=None, limit=None, offset=None, for_update=False, count=False):
         stmt = select(cls, for_update)
@@ -84,6 +84,24 @@ class WithAsyncCrud(object):
             total_count = count_result.scalar()
             
         return rows, total_count
+
+    @classmethod
+    async def find_first(cls, db: AsyncSession, where=None, select_in_load=None, order_by=None, for_update=False):
+        stmt = select(cls, for_update)
+        
+        if where is not None:
+            stmt = stmt.where(where)
+        if select_in_load is not None:
+            stmt = stmt.options(selectinload(select_in_load))
+        if order_by is not None:
+            stmt = stmt.order_by(order_by)
+        stmt.limit = 1
+        # Execute the main query and fetch the results
+        result = await db.execute(stmt)
+        row = result.scalars().first()
+        await db.flush()
+
+        return row
 
     @classmethod
     async def update(cls, db: AsyncSession, id, **kwargs):

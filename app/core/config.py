@@ -37,6 +37,10 @@ class Config(BaseSettings):
     CORS_ORIGINS_REGEX: str | None = None
     CORS_HEADERS: list[str]
 
+    JWT_ALG: str | None = "HS256"
+    JWT_EXP: int | None = 30
+    JWT_SECRET: str | None = "mysecret"
+
 
 settings = Config()
 

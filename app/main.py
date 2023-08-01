@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from app.core.config import settings, fastapi_config
+from app.core.auth.fake_auth import router as auth_router
 from app.modules.users.router import router as user_router
 
 logger = logging.getLogger(__name__)
@@ -30,4 +31,4 @@ app.add_middleware(
 )
 
 app.include_router(user_router, prefix="/user", tags=["User"])
-
+app.include_router(auth_router, prefix="/auth", tags=["Auth"])

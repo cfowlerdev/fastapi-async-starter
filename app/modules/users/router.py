@@ -5,7 +5,7 @@ from app.core.database.dependencies import async_dbsession
 from app.modules.users.schemas import UserResponse, UserInput
 from app.modules.users.models import User
 from app.core.pagination.schemas import PagedResponse, PageParams
-from app.core.pagination.paginate import paginate
+from app.core.auth.fake_auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,8 @@ router = APIRouter(
 )
 async def create_user(
     input: UserInput = Body(),
-    db: AsyncSession = Depends(async_dbsession)   
+    db: AsyncSession = Depends(async_dbsession),
+    current_user: User = Depends(get_current_user) 
 ):
     try:
         user = await User.async_add_by_schema(db, input)
@@ -41,7 +42,10 @@ async def create_user(
     tags=["User"],
     summary="Get a user by ID"    
 )
-async def get_user(user_id: int, db: AsyncSession = Depends(async_dbsession)):
+async def get_user(
+    user_id: int, db: AsyncSession = Depends(async_dbsession), 
+    current_user: User = Depends(get_current_user)
+):
     user = await User.get_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -55,7 +59,11 @@ async def get_user(user_id: int, db: AsyncSession = Depends(async_dbsession)):
     tags=["User"],
     summary="Get list of users"    
 )
-async def get_users(page_params: PageParams = Depends(), db: AsyncSession = Depends(async_dbsession)):
+async def get_users(
+    page_params: PageParams = Depends(), 
+    db: AsyncSession = Depends(async_dbsession), 
+    current_user: User = Depends(get_current_user)
+):
     rows, total_count = await User.filter(db=db, offset=(page_params.page - 1) * page_params.size, count=True)
     return PagedResponse(
         total = total_count,
@@ -72,7 +80,12 @@ async def get_users(page_params: PageParams = Depends(), db: AsyncSession = Depe
     tags=["User"],
     summary="Update a user by ID"    
 )
-async def update_user(user_id: int, input: UserInput = Body(), db: AsyncSession = Depends(async_dbsession)):
+async def update_user(
+    user_id: int, 
+    input: UserInput = Body(), 
+    db: AsyncSession = Depends(async_dbsession), 
+    current_user: User = Depends(get_current_user)
+):
     user = await User.get_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -87,7 +100,11 @@ async def update_user(user_id: int, input: UserInput = Body(), db: AsyncSession 
     tags=["User"],
     summary="Delete a user by ID"    
 )
-async def delete_user(user_id: int, db: AsyncSession = Depends(async_dbsession)):
+async def delete_user(
+    user_id: int, 
+    db: AsyncSession = Depends(async_dbsession), 
+    current_user: User = Depends(get_current_user)
+):
     result = await User.delete(db, user_id)
     if not result:
         raise HTTPException(status_code=404, detail="Item not found")
