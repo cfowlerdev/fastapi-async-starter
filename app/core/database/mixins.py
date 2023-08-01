@@ -1,7 +1,10 @@
+import logging
 from datetime import datetime
-from sqlalchemy import select, delete, func
+from sqlalchemy import select, delete, update, func
 from sqlalchemy.orm import Mapped, mapped_column, selectinload, exc
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 class WithTimestamps(object):
     created_at: Mapped[datetime] = mapped_column(default=datetime.now())
@@ -83,18 +86,19 @@ class WithAsyncCrud(object):
         return rows, total_count
 
     @classmethod
-    async def update(cls, db: AsyncSession, commit=True, **kwargs):
-        for key, value in kwargs.items():
-            setattr(cls, key, value)
-        if commit:
+    async def update(cls, db: AsyncSession, id, **kwargs):
+        await db.execute(update(cls).where(cls.id == id).values(kwargs))
+        try:
             await db.commit()
-
+        except Exception as exc:
+            await db.rollback()
+            raise exc
+        else:
+            await db.flush()
+        
     @classmethod
-    async def delete(cls, db: AsyncSession, where) -> bool:
-        expression = delete(cls)
-        if where is not None:
-            expression = expression.where(where)
-        result = await db.execute(expression)
+    async def delete(cls, db: AsyncSession, id) -> bool:
+        result = await db.execute(delete(cls).where(cls.id == id))
         try:
             await db.commit()
         except Exception as exc:
