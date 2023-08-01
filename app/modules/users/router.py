@@ -64,4 +64,31 @@ async def get_users(page_params: PageParams = Depends(), db: AsyncSession = Depe
         results = [UserResponse.model_validate(item) for item in rows]
     )
 
+@router.put(
+    "/{user_id}",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK,
+    description="Update a user by ID",
+    tags=["User"],
+    summary="Update a user by ID"    
+)
+async def update_user(user_id: int, input: UserInput = Body(), db: AsyncSession = Depends(async_dbsession)):
+    user = await User.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Item not found")
+    await user.update(db, id=user_id, **input.model_dump(), )
+    return UserResponse.model_validate(user)
 
+
+@router.delete(
+    "/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    description="Delete a user by ID",
+    tags=["User"],
+    summary="Delete a user by ID"    
+)
+async def delete_user(user_id: int, db: AsyncSession = Depends(async_dbsession)):
+    result = await User.delete(db, user_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return
