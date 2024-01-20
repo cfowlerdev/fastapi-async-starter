@@ -1,31 +1,29 @@
 # Another FastAPI Starter Project
 
-NOTE: Work in Progress
-
 ## Dev Setup
 
 Init project (dev, CI)
 ```sh
-$ cd fastapi-starter
+$ cd fastapi-async-starter
+# Create a virtual environment for development (recommend virtualenv and pyenv)
+$ virtualenv .venv -p ~/.pyenv/versions/3.12.1/bin/python
+$ source .venv/bin/activate
+# Copy the environment defaults and edit as you please
+$ cp .env.example .env
 # Ensure Poetry puts the virtual environment in your project folder (will be ignored by git)
 $ poetry config virtualenvs.in-project true
 $ poetry install --with dev
 $ docker network create app_network
-$ docker-compose up --build
+$ docker compose up --build
 ```
 
 Init project (prod)
 ```sh
-$ cd eventsapp-be-py
+$ cd fastapi-async-starter
 $ poetry install --without dev
 ```
 
-Not currently using Poetry in the Dockerfile, so in the meantime relying on requirements.txt. This can be synced with Poetry by running the following:
-```sh
-$ poetry export -f requirements.txt --output requirements.txt --without-hashes
-```
-
-### Migrations
+### Alembic Migrations
 
 - Create new auto migrations
 ```shell
