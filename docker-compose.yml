@@ -42,7 +42,3 @@ volumes:
   app_pg_data:
     driver: "local"
 
-networks:
-  default:
-    external: true
-    name: app_network
